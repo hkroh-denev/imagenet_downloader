@@ -31,6 +31,8 @@ var download = function(url, dest, callback) {
       request = https.get(url, responseFunction);
     else
       request = http.get(url, responseFunction);
+    
+    request.setSocketKeepAlive(false);
 
     request.setTimeout(15000, function() {
       request.abort();  // error will occur and close file
@@ -46,7 +48,7 @@ var download = function(url, dest, callback) {
     });
 
     file.on('error', function(err) {
-      file.close();
+      file.end();
       //fs.unlink(dest);
       if (callback)
         return callback(err.message + ' for ' + dest);
@@ -104,7 +106,7 @@ function processLine(data)
     if (ext != '.gif' && ext != '.png')
       ext = '.jpg';
   }
-  var imageFile = imageId + ext;
+  var imageFile = './images/' + imageId + ext;
 
   if (!fs.existsSync(imageFile))
     download(imageUrl, imageFile, downloadCallback);
