@@ -8,6 +8,8 @@ var http = require('http');
 var https = require('https');
 var fs = require('fs');
 
+var config = require('./config.json');
+
 var downloadCounter = 0;
 
 var download = function(url, dest, callback) {
@@ -16,7 +18,7 @@ var download = function(url, dest, callback) {
     var responseFunction = function(response) {
       if (response.statusCode != 200) {
         file.close();
-        //fs.unlink(dest);
+        fs.unlink(dest);
         if (callback)
         {
           return callback('Response status was ' + response.statusCode + ' for ' + dest);
@@ -26,12 +28,13 @@ var download = function(url, dest, callback) {
       response.pipe(file);
 
       file.on('finish', function() {
-        file.close();
-        callback('Download OK ' + dest);
+        file.close(callback);
+        //callback('Download OK ' + dest);
       })
     };
     
-    console.log('Download: ' + url + ' to ' + dest);
+    if (config.logLevel >= 2)
+      console.log('Download: ' + url + ' to ' + dest);
 
     var request;
     if (url.substring(0, 5) == 'https')
@@ -42,21 +45,19 @@ var download = function(url, dest, callback) {
     request.setSocketKeepAlive(false);
 
     request.setTimeout(15000, function() {
-      request.abort();  // error will occur and close file
-      //if (callback)
-      //  return callback('Request timeout for ' + dest + ' ' + url);
+      request.abort();  // error will occur and close file in 'error'
     });
 
     request.on('error', function(err) {
       file.close();
-      //fs.unlink(dest);
+      fs.unlink(dest);
       if (callback)
         return callback(err.message + ' for ' + dest);
     });
 
     file.on('error', function(err) {
       file.end();
-      //fs.unlink(dest);
+      fs.unlink(dest);
       if (callback)
         return callback(err.message + ' for ' + dest);
     });
@@ -93,7 +94,8 @@ var readline = function(input, func) {
 function downloadCallback(message)
 {
   if (message) {
-    console.log(message);
+	if (config.logLevel >= 1)
+		console.log(message);
   }
   downloadCounter++;
   setTimeout(function() { parseLine(processLine); }, 100);
@@ -119,15 +121,16 @@ function processLine(data)
     if (ext != '.gif' && ext != '.png' && ext != '.tif' && ext != '.bmp')
       ext = '.jpg';
   }
-  var imageFile = './images/' + imageId + ext;
+  var imageFile = config.outputPath + '/' + imageId + ext;
 
   if (!fs.existsSync(imageFile))
     download(imageUrl, imageFile, downloadCallback);
   else {
 	  downloadSkip();
-	  console.log("Download skip: " + imageFile); 
+	  if (config.logLevel >= 2)
+	    console.log("Download skip: " + imageFile); 
 	}
 }
 
-var input = fs.createReadStream('../fall11_urls.txt');
+var input = fs.createReadStream(config.inputFile);
 readline(input, processLine);
