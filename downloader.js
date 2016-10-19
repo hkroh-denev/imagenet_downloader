@@ -1,4 +1,8 @@
-/* ImageNet downloader */
+/* ImageNet downloader 
+ * 
+ * NodeJS version
+ * 
+ * */
 
 var http = require('http');
 var https = require('https');
@@ -22,9 +26,12 @@ var download = function(url, dest, callback) {
       response.pipe(file);
 
       file.on('finish', function() {
-        file.close(callback);
+        file.close();
+        callback('Download OK ' + dest);
       })
     };
+    
+    console.log('Download: ' + url + ' to ' + dest);
 
     var request;
     if (url.substring(0, 5) == 'https')
@@ -36,8 +43,8 @@ var download = function(url, dest, callback) {
 
     request.setTimeout(15000, function() {
       request.abort();  // error will occur and close file
-      if (callback)
-        return callback('Request timeout for ' + dest);
+      //if (callback)
+      //  return callback('Request timeout for ' + dest + ' ' + url);
     });
 
     request.on('error', function(err) {
@@ -57,18 +64,24 @@ var download = function(url, dest, callback) {
 
 var remaining = '';
 
+function parseLine(func) {
+    var index = remaining.indexOf('\n');
+    if (index > 0)
+    {
+      var line = remaining.substring(0, index);
+      remaining = remaining.substring(index+1);
+      func(line);
+    }
+    else
+      input.resume();
+}
+
 var readline = function(input, func) {
 
     input.on('data', function(data) {
+      input.pause();
       remaining += data;
-      var index = remaining.indexOf('\n');
-      if (index > 0)
-      {
-        var line = remaining.substring(0, index);
-        remaining = remaining.substring(index+1);
-        input.pause();
-        func(line);
-      }
+      parseLine(func);
     });
 
     input.on('end', function() {
@@ -79,23 +92,23 @@ var readline = function(input, func) {
 
 function downloadCallback(message)
 {
-  if (message)
+  if (message) {
     console.log(message);
+  }
   downloadCounter++;
-  input.resume();
+  setTimeout(function() { parseLine(processLine); }, 100);
 }
 
 function downloadSkip()
 {
-  //console.log('skip');
-  input.resume();
+	setTimeout(function() { parseLine(processLine); }, 1);
 }
 
 function processLine(data)
 {
-  var index = data.indexOf(' ');
+  var index = data.indexOf('\t');
   if (index < 0)
-    index = data.indexOf('\t');
+    index = data.indexOf(' ');
   var imageId = data.substring(0, index);
   var imageUrl = data.substring(index+1);
   var ext = '.jpg';
@@ -103,15 +116,17 @@ function processLine(data)
   if (extIndex > 0)
   {
     ext = imageUrl.substring(extIndex).toLowerCase();
-    if (ext != '.gif' && ext != '.png')
+    if (ext != '.gif' && ext != '.png' && ext != '.tif' && ext != '.bmp')
       ext = '.jpg';
   }
   var imageFile = './images/' + imageId + ext;
 
   if (!fs.existsSync(imageFile))
     download(imageUrl, imageFile, downloadCallback);
-  else
-    downloadSkip();
+  else {
+	  downloadSkip();
+	  console.log("Download skip: " + imageFile); 
+	}
 }
 
 var input = fs.createReadStream('../fall11_urls.txt');
