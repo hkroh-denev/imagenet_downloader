@@ -65,29 +65,29 @@ var download = function(url, dest, callback) {
 
 var remaining = '';
 
-function parseLine(func) {
+function parseLine(lineCallback) {
     var index = remaining.indexOf('\n');
     if (index > 0)
     {
       var line = remaining.substring(0, index);
       remaining = remaining.substring(index+1);
-      func(line);
+      lineCallback(line);
     }
     else
       input.resume();
 }
 
-var readline = function(input, func) {
+var readline = function(input, lineCallback) {
 
     input.on('data', function(data) {
       input.pause();
       remaining += data;
-      parseLine(func);
+      parseLine(lineCallback);
     });
 
     input.on('end', function() {
       if (remaining.length > 0)
-        func(remaining);
+        lineCallback(remaining);
     });
 }
 
@@ -122,13 +122,23 @@ function processLine(data)
       ext = '.jpg';
   }
   var imageFile = config.outputPath + '/' + imageId + ext;
-
-  if (!fs.existsSync(imageFile))
-    download(imageUrl, imageFile, downloadCallback);
-  else {
-	  downloadSkip();
-	  if (config.logLevel >= 2)
-	    console.log("Download skip: " + imageFile); 
+  
+  if (config.resume != null)
+  {
+  	if (imageFile == config.resume)
+  		console.log("Resume : " + imageFile);
+  	else
+  		downloadSkip();
+  }
+  else
+  {
+	  if (!fs.existsSync(imageFile))
+	    download(imageUrl, imageFile, downloadCallback);
+	  else {
+		  downloadSkip();
+		  if (config.logLevel >= 2)
+		    console.log("Download skip: " + imageFile); 
+		}
 	}
 }
 
