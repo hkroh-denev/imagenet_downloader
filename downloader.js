@@ -18,7 +18,10 @@ var download = function(url, dest, callback) {
     var responseFunction = function(response) {
       if (response.statusCode != 200) {
         file.close();
-        fs.unlink(dest);
+        fs.unlinkSync(dest);
+        
+        request.abort();
+        
         if (callback)
         {
           return callback('Response status was ' + response.statusCode + ' for ' + dest);
@@ -30,7 +33,7 @@ var download = function(url, dest, callback) {
       file.on('finish', function() {
         file.close(callback);
         //callback('Download OK ' + dest);
-      })
+      });
     };
     
     if (config.logLevel >= 2)
@@ -49,17 +52,23 @@ var download = function(url, dest, callback) {
     });
 
     request.on('error', function(err) {
-      file.close();
-      fs.unlink(dest);
+      if (fs.existsSync(dest))
+      {
+        file.close();
+        fs.unlinkSync(dest);
+      }
       if (callback)
-        return callback(err.message + ' for ' + dest);
+        return callback('Request error: ' + err.message + ' for ' + dest + ' url=' + url);
     });
 
     file.on('error', function(err) {
-      file.end();
-      fs.unlink(dest);
+      if (fs.existsSync(dest))
+      {
+        file.close();
+        fs.unlinkSync(dest);
+      }
       if (callback)
-        return callback(err.message + ' for ' + dest);
+        return callback('File error: ' + err.message + ' for ' + dest);
     });
 }
 
@@ -126,14 +135,19 @@ function processLine(data)
   if (config.resume != null)
   {
   	if (imageFile == config.resume)
+  	{
   		console.log("Resume : " + imageFile);
+  		config.resume = null;
+  		download(imageUrl, imageFile, downloadCallback);
+  	}
   	else
   		downloadSkip();
   }
   else
   {
-	  if (!fs.existsSync(imageFile))
+	  if (!fs.existsSync(imageFile)) {
 	    download(imageUrl, imageFile, downloadCallback);
+	  }
 	  else {
 		  downloadSkip();
 		  if (config.logLevel >= 2)
