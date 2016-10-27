@@ -1,4 +1,6 @@
 {
 	"inputFile": "../fall11_urls.txt",
-	"outputPath": "./images"
+	"outputPath": "./images",
+	"resume": "./images/n00440747_62.jpg",
+	"logLevel": 1
 }
